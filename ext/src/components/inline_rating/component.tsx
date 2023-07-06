@@ -1,18 +1,15 @@
 import { Box, Flex, Heading } from '@chakra-ui/layout'
 import { Skeleton, Spacer } from '@chakra-ui/react';
-import { emptyScoreData, getScoreData } from '@src/api/data';
+import { emptyScoreData, getScoreData, ScoreData } from '@src/api/data';
 import React, { FunctionComponent, useEffect, useState } from 'react'
 
 type RatingState = "loading" | "ready" | "hover" | "popup" | "error"
 
-type InlineRatingProps = {
-  lat: number,
-  lng: number
-}
+type InlineRatingProps = {data: Promise<ScoreData>};
 
 const displayScore = (x: number) => (x * 10).toFixed(1)
 
-export const InlineRating: FunctionComponent<InlineRatingProps> = ({lat, lng}: InlineRatingProps) => {
+export const InlineRating: FunctionComponent<InlineRatingProps> = ({data}: InlineRatingProps) => {
   const [ratingState, setRatingState] = useState("loading" as RatingState);
   const [scoreData, setScoreData] = useState(emptyScoreData)
 
@@ -20,13 +17,12 @@ export const InlineRating: FunctionComponent<InlineRatingProps> = ({lat, lng}: I
 
   useEffect(() => {
     if (!loaded) {
-      getScoreData(lat, lng)
-        .then(setScoreData)
-        .then(() => setRatingState("ready"))
-        .catch((e: any) => {
-          setRatingState("error")
-          console.error(e)
-        });
+        data.then(setScoreData)
+          .then(() => setRatingState("ready"))
+          .catch((e: any) => {
+            setRatingState("error")
+            console.error(e)
+          });
     }
   });
 

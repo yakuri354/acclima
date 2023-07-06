@@ -1,4 +1,4 @@
-type ScoreData = {
+export type ScoreData = {
   overall: number,
   scores: {
     air: number,
@@ -18,7 +18,10 @@ export const emptyScoreData: ScoreData = {
 
 const apiUrl = "http://localhost:8000";
 export async function getScoreData(lat: number, lng: number): Promise<ScoreData> {
-  return new Promise(resolve => setTimeout(() => resolve(emptyScoreData), 500));
+  let fakeScoreData = emptyScoreData;
+  fakeScoreData.scores.air = lat;
+  fakeScoreData.scores.light = lng;
+  return new Promise(resolve => setTimeout(() => resolve(fakeScoreData), 2000));
 }
 
 // export async function getScoreData(lat: number, lng: number): Promise<ScoreData> {
