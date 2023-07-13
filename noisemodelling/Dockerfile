@@ -2,8 +2,9 @@ FROM eclipse-temurin:11
 
 ARG VERSION="4.0.4"
 
-RUN apt update
-RUN apt install zip unzip
+RUN apt-get update
+RUN apt-get install zip unzip libgeos-c1v5 libnetcdf-dev libgdal-dev -y
+RUN ln -s /lib/x86_64-linux-gnu/libproj.so /lib/x86_64-linux-gnu/libproj.so.0
 
 WORKDIR /root
 
