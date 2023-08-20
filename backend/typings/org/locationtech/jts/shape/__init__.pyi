@@ -1,0 +1,46 @@
+
+import sys
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
+
+import org.locationtech.jts.geom
+import org.locationtech.jts.shape.fractal
+import org.locationtech.jts.shape.random
+import typing
+
+
+
+class CubicBezierCurve:
+    @typing.overload
+    @staticmethod
+    def bezierCurve(geometry: org.locationtech.jts.geom.Geometry, double: float) -> org.locationtech.jts.geom.Geometry: ...
+    @typing.overload
+    @staticmethod
+    def bezierCurve(geometry: org.locationtech.jts.geom.Geometry, double: float, double2: float) -> org.locationtech.jts.geom.Geometry: ...
+    @typing.overload
+    @staticmethod
+    def bezierCurve(geometry: org.locationtech.jts.geom.Geometry, geometry2: org.locationtech.jts.geom.Geometry) -> org.locationtech.jts.geom.Geometry: ...
+    def getResult(self) -> org.locationtech.jts.geom.Geometry: ...
+
+class GeometricShapeBuilder:
+    def __init__(self, geometryFactory: org.locationtech.jts.geom.GeometryFactory): ...
+    def getCentre(self) -> org.locationtech.jts.geom.Coordinate: ...
+    def getDiameter(self) -> float: ...
+    def getExtent(self) -> org.locationtech.jts.geom.Envelope: ...
+    def getGeometry(self) -> org.locationtech.jts.geom.Geometry: ...
+    def getRadius(self) -> float: ...
+    def getSquareBaseLine(self) -> org.locationtech.jts.geom.LineSegment: ...
+    def getSquareExtent(self) -> org.locationtech.jts.geom.Envelope: ...
+    def setExtent(self, envelope: org.locationtech.jts.geom.Envelope) -> None: ...
+    def setNumPoints(self, int: int) -> None: ...
+
+
+class __module_protocol__(Protocol):
+    # A module protocol which reflects the result of ``jp.JPackage("org.locationtech.jts.shape")``.
+
+    CubicBezierCurve: typing.Type[CubicBezierCurve]
+    GeometricShapeBuilder: typing.Type[GeometricShapeBuilder]
+    fractal: org.locationtech.jts.shape.fractal.__module_protocol__
+    random: org.locationtech.jts.shape.random.__module_protocol__

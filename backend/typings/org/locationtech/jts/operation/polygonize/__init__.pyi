@@ -1,0 +1,46 @@
+
+import sys
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
+
+import java.util
+import org.locationtech.jts.geom
+import typing
+
+
+
+class HoleAssigner:
+    def __init__(self, list: java.util.List['EdgeRing']): ...
+    @typing.overload
+    @staticmethod
+    def assignHolesToShells(list: java.util.List, list2: java.util.List) -> None: ...
+    @typing.overload
+    def assignHolesToShells(self, list: java.util.List['EdgeRing']) -> None: ...
+
+class Polygonizer:
+    @typing.overload
+    def __init__(self): ...
+    @typing.overload
+    def __init__(self, boolean: bool): ...
+    @typing.overload
+    def add(self, collection: typing.Union[java.util.Collection, typing.Sequence, typing.Set]) -> None: ...
+    @typing.overload
+    def add(self, geometry: org.locationtech.jts.geom.Geometry) -> None: ...
+    def getCutEdges(self) -> java.util.Collection: ...
+    def getDangles(self) -> java.util.Collection: ...
+    def getGeometry(self) -> org.locationtech.jts.geom.Geometry: ...
+    def getInvalidRingLines(self) -> java.util.Collection: ...
+    def getPolygons(self) -> java.util.Collection: ...
+    def setCheckRingsValid(self, boolean: bool) -> None: ...
+
+class EdgeRing: ...
+
+
+class __module_protocol__(Protocol):
+    # A module protocol which reflects the result of ``jp.JPackage("org.locationtech.jts.operation.polygonize")``.
+
+    EdgeRing: typing.Type[EdgeRing]
+    HoleAssigner: typing.Type[HoleAssigner]
+    Polygonizer: typing.Type[Polygonizer]

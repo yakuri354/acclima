@@ -1,0 +1,10 @@
+id: file://<WORKSPACE>/src/main/scala/com/acclima/backend2/AirService.scala:[141..141) in Input.VirtualFile("file://<WORKSPACE>/src/main/scala/com/acclima/backend2/AirService.scala", "package com.acclima.backend2
+
+import java.time.Instant
+
+case class AirData(dt: Instant, aqi: Double, components: Map[String, Double])
+
+class ")
+file://<WORKSPACE>/src/main/scala/com/acclima/backend2/AirService.scala:7: error: expected identifier; obtained eof
+class 
+      ^

@@ -1,0 +1,4 @@
+[debug] [backend2-build-build] Classpath dependencies List()
+[debug] [backend2-build-build] Dependencies from configurations List()
+[debug] Bloop wrote the configuration of project 'backend2-build-build' to '/Users/lain/Source/acclima/backend2/project/project/.bloop/backend2-build-build.json'
+[success] Generated .bloop/backend2-build-build.json
