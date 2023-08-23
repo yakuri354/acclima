@@ -150,7 +150,7 @@ def exec(Connection connection, input) {
 
     // print to command window
     logger.info('Start : Receivers grid around buildings')
-    logger.info("inputs {}", input) // log inputs of the run
+    // logger.info("inputs {}", input) // log inputs of the run
 
 
     String receivers_table_name = "RECEIVERS"
@@ -225,7 +225,7 @@ def exec(Connection connection, input) {
 
     sql.execute("drop table if exists tmp_receivers_lines")
     
-    logger.info("fence " + fenceGeom.toString())
+    // logger.info("fence " + fenceGeom.toString())
 
     if (fenceGeom != null) {
         sql.execute("create table tmp_receivers_lines(pk int not null primary key, the_geom geometry) as select " + buildingPk + " as pk, st_simplifypreservetopology(ST_ToMultiLine(ST_Buffer(the_geom, :distance_wall, 'join=bevel')), 0.05) the_geom from " + building_table_name + " WHERE the_geom && :fenceGeom AND ST_INTERSECTS(the_geom, :fenceGeom)", [fenceGeom : fenceGeom, distance_wall : distance])
