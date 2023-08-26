@@ -4,6 +4,10 @@ import os
 import shutil
 from typing import Any
 from dataclasses import dataclass
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy import Double as sqlDouble
+import aiofiles.os
 
 from . import groovy
 
@@ -16,40 +20,42 @@ from .overpass import overpass_fetch
 from .const import *
 from util import percentile, bounds
 from logging import debug, info, warn, error
+from cache import CacheBase
+from task import spawn_task
 
 
 # FIXME govnocode
 def j_float2py(x):
     return float(str(x.toPlainString()))
 
-@dataclass
-class NoiseData:
-    laeq_day: float
-    laeq_evening: float
-    laeq_night: float
-    laeq_den: float
+
+class NoiseData(CacheBase):
+    __tablename__ = "noise_cache"
+    __threshold__ = CACHE_DIST_TRESHOLD
+    __version__ = 1
+
+    laeq_day: Mapped[float] = mapped_column(sqlDouble())
+    laeq_evening: Mapped[float] = mapped_column(sqlDouble())
+    laeq_night: Mapped[float] = mapped_column(sqlDouble())
+    laeq_den: Mapped[float] = mapped_column(sqlDouble())
 
     def score(self):
         return 1.0 - bounds(0.0, (self.laeq_den - 35) / 45, 1.0)
 
     @staticmethod
-    def null():
-        return NoiseData(0.0, 0.0, 0.0, 0.0)
-    
-    @staticmethod
-    def from_record(r):
-        return NoiseData(r['laeq_day'], r['laeq_evening'], r['laeq_night'], r['laeq_den'])
+    def zero():
+        return NoiseData(laeq_day=0.0, laeq_evening=0.0, laeq_night=0.0, laeq_den=0.0)
 
 
 # FIXME govnocode
 class NoiseComputation:
     def __init__(self, pt: Point, session: ClientSession) -> None:
-        self.cid = (str(time.time_ns()) + '0' * 20)[:20]  # govnocode
+        self.cid = (str(time.time_ns()) + "0" * 20)[:20]  # govnocode
         self.sess = session
         self.pt = pt
         self.db_pt = pt.with_srid(SRID_H2DB).to_java()
         self.tmp_file = f"/tmp/osm_{self.cid}.osm"
-        self.db_file = f"/tmp/db_{self.cid}"
+        self.db_file = f"mem:{self.cid}"
 
     async def groovy_invoke(self, script: str, data: dict[str, Any]) -> Any:
         with await self.db_conn() as conn:
@@ -58,36 +64,38 @@ class NoiseComputation:
     async def import_osm(self):
         # TODO fix ground import
         info(f"calling import_osm on {self.tmp_file}")
-        await self.groovy_invoke("Import_And_Export/Import_OSM", {
-            "pathFile": self.tmp_file,
-            "targetSRID": SRID_H2DB,
-            "removeTunnels": True,
-            "ignoreGround": True,
-            "cid": self.cid
-        })
+        await self.groovy_invoke(
+            "Import_And_Export/Import_OSM",
+            {
+                "pathFile": self.tmp_file,
+                "targetSRID": SRID_H2DB,
+                "removeTunnels": True,
+                "ignoreGround": True,
+                "cid": self.cid,
+            },
+        )
 
     async def fetch_map(self):
         await overpass_fetch(self.pt, AREA_RADIUS, self.tmp_file, self.sess)
 
     async def db_conn(self):
-        if os.path.exists(self.db_file):
-            shutil.rmtree(self.db_file)
-
-        os.makedirs(self.db_file)
-
         return await h2db.new_h2gis_conn(self.db_file)
 
     async def get_building(self):
         with await self.db_conn() as conn:
             # fuck h2
-            res = await h2db.query_all(conn, f"""
+            res = await h2db.query_all(
+                conn,
+                f"""
                 with
                     dist as (select min(ST_Length(ST_ShortestLine(?, the_geom))) from {BUILDINGS_TABLE})
                 select * from {BUILDINGS_TABLE} where 
                     exists (select * from dist)
                     and (select * from dist) < ?
                     and ST_Length(ST_ShortestLine(?, the_geom)) <= (select * from dist) limit 1
-            """, [self.db_pt, MAX_BUILDING_SEARCH_DIST, self.db_pt])
+            """,
+                [self.db_pt, MAX_BUILDING_SEARCH_DIST, self.db_pt],
+            )
 
             if len(res) > 0:
                 return res[0]["THE_GEOM"]
@@ -100,43 +108,58 @@ class NoiseComputation:
         if bld is None:
             debug(f"fallback point {bld}")
             with await self.db_conn() as conn:
-                await h2db.exec_upd(conn, f"""
+                await h2db.exec_upd(
+                    conn,
+                    f"""
                     create table {RECEIVERS_TABLE} (pk integer not null AUTO_INCREMENT, the_geom geometry, build_pk integer)
-                """)
+                """,
+                )
 
-                await h2db.exec_upd(conn, f"insert into {RECEIVERS_TABLE} values (1, ?, 1)", [self.db_pt])
+                await h2db.exec_upd(
+                    conn,
+                    f"insert into {RECEIVERS_TABLE} values (1, ?, 1)",
+                    [self.db_pt],
+                )
         else:
-            rcbs = Double @ RECEIVER_BUFFER_SIZE # type: ignore
-            fence = ST_Buffer.buffer(bld, rcbs) 
+            rcbs = Double @ RECEIVER_BUFFER_SIZE  # type: ignore
+            fence = ST_Buffer.buffer(bld, rcbs)
 
             debug(f"invoke building_grid: {fence}")
 
-            await self.groovy_invoke("Receivers/Building_Grid", {
-                "tableBuilding": BUILDINGS_TABLE,
-                "sourcesTableName": ROADS_TABLE,
-                "fence": fence
-            })
+            await self.groovy_invoke(
+                "Receivers/Building_Grid",
+                {
+                    "tableBuilding": BUILDINGS_TABLE,
+                    "sourcesTableName": ROADS_TABLE,
+                    "fence": fence,
+                },
+            )
 
     async def compute_road_emision(self):
-        await self.groovy_invoke("NoiseModelling/Road_Emission_from_Traffic", {
-            "tableRoads": ROADS_TABLE
-        })
+        await self.groovy_invoke(
+            "NoiseModelling/Road_Emission_from_Traffic", {"tableRoads": ROADS_TABLE}
+        )
 
     async def compute_propagation(self):
-        await self.groovy_invoke("NoiseModelling/Noise_level_from_source", {
-            "tableBuilding": BUILDINGS_TABLE,
-            "tableSources": LW_ROADS_TABLE,
-            "tableReceivers": RECEIVERS_TABLE,
-            # FIXME
-            # "tableGroundAbs": GROUND_TABLE
-        })
+        await self.groovy_invoke(
+            "NoiseModelling/Noise_level_from_source",
+            {
+                "tableBuilding": BUILDINGS_TABLE,
+                "tableSources": LW_ROADS_TABLE,
+                "tableReceivers": RECEIVERS_TABLE,
+                # FIXME
+                # "tableGroundAbs": GROUND_TABLE
+            },
+        )
 
     async def get_result(self) -> NoiseData:
         # TODO fixme
         with await self.db_conn() as conn:
             lden = await h2db.query_all(conn, f"select * from {LDEN_GEOM_TABLE}")
             lday = await h2db.query_all(conn, f"select * from {LDAY_GEOM_TABLE}")
-            levening = await h2db.query_all(conn, f"select * from {LEVENING_GEOM_TABLE}")
+            levening = await h2db.query_all(
+                conn, f"select * from {LEVENING_GEOM_TABLE}"
+            )
             lnight = await h2db.query_all(conn, f"select * from {LNIGHT_GEOM_TABLE}")
 
         # TODO do something smarter
@@ -157,7 +180,8 @@ class NoiseComputation:
         with await self.db_conn() as c:
             cr = await h2db.query_all(c, f"select count(*) as c from {ROADS_TABLE}")
             cb = await h2db.query_all(c, f"select count(*) as c from {BUILDINGS_TABLE}")
-        if cr[0]['C'] == 0 or cb[0]['C'] == 0:
+
+        if cr[0]["C"] == 0 or cb[0]["C"] == 0:
             return None
             # return NoiseData.null()
 
@@ -166,3 +190,28 @@ class NoiseComputation:
         await self.compute_propagation()
 
         return await self.get_result()
+    
+    async def __aenter__(self):
+        self._bg_dbconn = await self.db_conn()
+        return self
+    
+    async def __aexit__(self, _e_type, _e_val, _e_traceback):
+        await h2db.exec_upd(self._bg_dbconn, "SHUTDOWN IMMEDIATELY")
+        spawn_task(aiofiles.os.remove(self.tmp_file))
+
+
+async def _compute_noise_no_cache(
+    lat: float, lng: float, s: ClientSession, sm: async_sessionmaker[AsyncSession]
+) -> NoiseData | None:
+    pt = Point(lat, lng, SRID_ANGLE)
+    async with NoiseComputation(pt, s) as comp:
+        return await comp.run()
+
+
+async def compute_noise_cached(
+    lat: float, lng: float, s: ClientSession, sm: async_sessionmaker[AsyncSession]
+) -> NoiseData | None:
+    pt = Point(lat, lng, SRID_ANGLE)
+    return await NoiseData().with_cache(
+        lambda: _compute_noise_no_cache(lat, lng, s, sm), pt, sm
+    )

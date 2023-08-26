@@ -1,7 +1,7 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import { InlineRating } from "@src/components/inline_rating/component";
-import { getScoreData } from '@src/api/data';
+import { getScoreData, getSingleData } from '@src/api/data';
 
 const log = console.log;
 
@@ -56,10 +56,16 @@ const injectSearchResults = () => {
       let latlng = map?.getAttribute("data-atlas-latlng")?.split(",").map(x => parseFloat(x));
       if (!latlng) throw new Error("Location coords not found");
 
-      return await getScoreData(latlng[0], latlng[1]);
+      return latlng
     })();
+    
+    let comps = {
+      air: data.then(l => getSingleData("air", l[0], l[1])),
+      light: data.then(l => getSingleData("light", l[0], l[1])),
+      noise: data.then(l => getSingleData("noise", l[0], l[1])),
+    }
 
-    let rating = React.createElement(InlineRating, {data});
+    let rating = React.createElement(InlineRating, comps);
     ReactDOM.render(rating, tooltip);
   });
 }

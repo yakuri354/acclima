@@ -6,7 +6,7 @@ import { Box, ChakraProvider, Grid } from '@chakra-ui/react'
 import { Hello } from '@src/components/hello/component'
 import { Scroller } from '@src/components/scroller/component'
 import { InlineRating } from '@src/components/inline_rating/component'
-import { getScoreData } from '@src/api/data'
+import { getAllData, getScoreData } from '@src/api/data'
 
 export const Popup: FunctionComponent = () => {
   useEffect(() => {
@@ -20,7 +20,7 @@ export const Popup: FunctionComponent = () => {
 
           <Scroller />
 
-          <InlineRating data={getScoreData(55, 37)} />
+          <InlineRating {...getAllData(55, 37)} />
         </Grid>
       </Box>
     </ChakraProvider>

@@ -1,6 +1,6 @@
 from typing import Tuple
 
-def w_avg(*l: Tuple[float, float]) -> float:
+def w_avg(l: list[Tuple[float, float]]) -> float:
     return sum(x[0] * x[1] for x in l) / sum(x[1] for x in l)
 
 def avg(it):
