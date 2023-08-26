@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    ports:
+      - 8000:80
+    environment:
+      DB_HOST: postgis:5432
+      DB_USER: acclima
+      DB_PASS: acclimapgpass
+      DB_NAME: acclima
+    depends_on:
+      postgis:
+        condition: service_healthy
+    restart: always
+  postgis:
+    image: "kartoza/postgis:15-3.3"
+    volumes:
+      - postgisdata:/var/lib/postgresql
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_USER: acclima
+      POSTGRES_PASS: acclimapgpass
+      POSTGRES_DBNAME: acclima
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acclima -d acclima"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: none
+volumes:
+  postgisdata:

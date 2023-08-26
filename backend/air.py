@@ -1,5 +1,5 @@
 from aiohttp import ClientSession
-from secret import WAQI_TOKEN, OWM_TOKEN
+from config import WAQI_TOKEN, OWM_TOKEN
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession

@@ -65,7 +65,7 @@ class NoiseComputation:
         # TODO fix ground import
         info(f"calling import_osm on {self.tmp_file}")
         await self.groovy_invoke(
-            "Import_And_Export/Import_OSM",
+            "Import_and_Export/Import_OSM",
             {
                 "pathFile": self.tmp_file,
                 "targetSRID": SRID_H2DB,

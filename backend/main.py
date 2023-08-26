@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import aiohttp
 
 import api
-import secret as s
+import config as s
 from cache import CacheBase
 
 app = FastAPI()
